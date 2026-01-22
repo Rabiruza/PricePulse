@@ -18,15 +18,19 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
-    - name: Build and Install Playwright
+    - name: Clean and Build
       shell: pwsh
       run: |
+        # Видаляємо файл рішення, щоб він не заважав неправильними шляхами
+        Get-ChildItem -Filter *.sln -Recurse | Remove-Item -Force
+        
+        # Знаходимо проект і будуємо його
         $proj = Get-ChildItem -Filter *.csproj -Recurse | Select-Object -First 1
-        Write-Host "Found project: $($proj.FullName)"
+        Write-Host "Building project: $($proj.FullName)"
         dotnet build $($proj.FullName)
         
+        # Встановлюємо Playwright
         $pwScript = Get-ChildItem -Filter playwright.ps1 -Recurse | Select-Object -First 1
-        Write-Host "Found Playwright script: $($pwScript.FullName)"
         pwsh $($pwScript.FullName) install --with-deps
 
     - name: Run Scraper
