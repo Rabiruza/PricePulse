@@ -18,18 +18,22 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
-    - name: Install Playwright Browsers
+    - name: Build and Install Playwright
+      shell: pwsh
       run: |
-        dotnet build
-        $PW_PATH = Get-ChildItem -Path . -Filter playwright.ps1 -Recurse | Select-Object -First 1 -ExpandProperty FullName
-        pwsh $PW_PATH install --with-deps
+        $proj = Get-ChildItem -Filter *.csproj -Recurse | Select-Object -First 1
+        Write-Host "Found project: $($proj.FullName)"
+        dotnet build $($proj.FullName)
+        
+        $pwScript = Get-ChildItem -Filter playwright.ps1 -Recurse | Select-Object -First 1
+        Write-Host "Found Playwright script: $($pwScript.FullName)"
+        pwsh $($pwScript.FullName) install --with-deps
 
     - name: Run Scraper
+      shell: pwsh
       run: |
-        $PROJ_PATH = Get-ChildItem -Path . -Filter *.csproj -Recurse | Select-Object -First 1 -ExpandProperty FullName
-        dotnet build $PROJ_PATH
-        $PW_PATH = Get-ChildItem -Path . -Filter playwright.ps1 -Recurse | Select-Object -First 1 -ExpandProperty FullName
-        pwsh $PW_PATH install --with-deps
+        $proj = Get-ChildItem -Filter *.csproj -Recurse | Select-Object -First 1
+        dotnet run --project $($proj.FullName)
 
     - name: Commit and Push changes
       run: |
