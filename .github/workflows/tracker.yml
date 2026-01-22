@@ -27,7 +27,9 @@ jobs:
     - name: Run Scraper
       run: |
         $PROJ_PATH = Get-ChildItem -Path . -Filter *.csproj -Recurse | Select-Object -First 1 -ExpandProperty FullName
-        dotnet run --project $PROJ_PATH
+        dotnet build $PROJ_PATH
+        $PW_PATH = Get-ChildItem -Path . -Filter playwright.ps1 -Recurse | Select-Object -First 1 -ExpandProperty FullName
+        pwsh $PW_PATH install --with-deps
 
     - name: Commit and Push changes
       run: |
