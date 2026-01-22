@@ -17,32 +17,41 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
+        # Disable automatic restore to prevent searching for non-existent .sln paths
+        cache: false 
 
-    - name: Clean and Build
+    - name: Build and Install Playwright
       shell: pwsh
       run: |
-        # Видаляємо файл рішення, щоб він не заважав неправильними шляхами
+        # Remove solution files to avoid conflicts with outdated project paths
         Get-ChildItem -Filter *.sln -Recurse | Remove-Item -Force
         
-        # Знаходимо проект і будуємо його
+        # Find the project file dynamically
         $proj = Get-ChildItem -Filter *.csproj -Recurse | Select-Object -First 1
-        Write-Host "Building project: $($proj.FullName)"
-        dotnet build $($proj.FullName)
+        Write-Host "Found project: $($proj.FullName)"
         
-        # Встановлюємо Playwright
+        # Restore and build targeting the project file directly
+        dotnet restore $($proj.FullName)
+        dotnet build $($proj.FullName) --no-restore
+        
+        # Find and run Playwright installation script
         $pwScript = Get-ChildItem -Filter playwright.ps1 -Recurse | Select-Object -First 1
         pwsh $($pwScript.FullName) install --with-deps
 
     - name: Run Scraper
       shell: pwsh
       run: |
+        # Locate project and run without re-building
         $proj = Get-ChildItem -Filter *.csproj -Recurse | Select-Object -First 1
-        dotnet run --project $($proj.FullName)
+        dotnet run --project $($proj.FullName) --no-build
 
     - name: Commit and Push changes
       run: |
+        # Setup git bot identity
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Save changes in price_history.json back to the repository
         git add price_history.json
         git commit -m "Update price history" || exit 0
         git push
