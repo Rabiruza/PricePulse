@@ -17,39 +17,31 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
-        cache: false 
+        cache: false
 
-    - name: Build Core Project
+    - name: Build and Install Playwright
       shell: pwsh
       run: |
-        # Find the Core project file (ignoring bin/obj and Tests)
-        $proj = Get-ChildItem -Filter PricePulse.Core.csproj -Recurse | Select-Object -First 1
-        Write-Host "Found project: $($proj.FullName)"
+        # Ensure we are in the project directory where .csproj actually is
+        cd PricePulse.Core
         
-        # Build specifically the Core project
-        dotnet build $($proj.FullName) -c Release
-
-    - name: Install Playwright
-      shell: pwsh
-      run: |
-        # Playwright script is generated after build in the output directory
-        $pwScript = Get-ChildItem -Filter playwright.ps1 -Recurse | Select-Object -First 1
-        if (-not $pwScript) { throw "Playwright script not found! Build might have failed." }
-        Write-Host "Using script: $($pwScript.FullName)"
+        # Build the project directly
+        dotnet build PricePulse.Core.csproj -c Release
+        
+        # Install Playwright browsers using the generated script
+        $pwScript = Get-ChildItem -Path .. -Filter playwright.ps1 -Recurse | Select-Object -First 1
         pwsh $($pwScript.FullName) install --with-deps
 
     - name: Run Scraper
       shell: pwsh
       run: |
-        $proj = Get-ChildItem -Filter PricePulse.Core.csproj -Recurse | Select-Object -First 1
-        # Run without background metrics to avoid Prometheus connection errors
-        dotnet run --project $($proj.FullName) -c Release --no-build
+        cd PricePulse.Core
+        dotnet run --project PricePulse.Core.csproj -c Release --no-build
 
     - name: Commit and Push changes
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        # Only commit if price_history.json was updated
-        git add PricePulse.Core/price_history.json || git add price_history.json
+        git add PricePulse.Core/price_history.json
         git commit -m "Update price history [skip ci]" || exit 0
         git push
