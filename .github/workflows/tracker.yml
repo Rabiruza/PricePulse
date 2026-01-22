@@ -2,9 +2,8 @@ name: iPhone Price Tracker
 
 on:
   schedule:
-    # Запуск кожні 6 годин (можна змінити)
     - cron: '0 */6 * * *'
-  workflow_dispatch: # Дозволяє запускати вручну кнопкою
+  workflow_dispatch:
 
 jobs:
   check-price:
@@ -21,16 +20,19 @@ jobs:
 
     - name: Install Playwright Browsers
       run: |
-        dotnet build PricePulse.Core/PricePulse.Core.csproj
-        pwsh PricePulse.Core/bin/Debug/net8.0/playwright.ps1 install --with-deps
+        dotnet build
+        $PW_PATH = Get-ChildItem -Path . -Filter playwright.ps1 -Recurse | Select-Object -First 1 -ExpandProperty FullName
+        pwsh $PW_PATH install --with-deps
 
     - name: Run Scraper
-      run: dotnet run --project PricePulse.Core/PricePulse.Core.csproj
+      run: |
+        $PROJ_PATH = Get-ChildItem -Path . -Filter *.csproj -Recurse | Select-Object -First 1 -ExpandProperty FullName
+        dotnet run --project $PROJ_PATH
 
     - name: Commit and Push changes
       run: |
-        git config --global user.name "GitHub Action"
-        git config --global user.email "action@github.com"
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git add price_history.json
-        git commit -m "Update price history [skip ci]" || exit 0
+        git commit -m "Update price history" || exit 0
         git push
