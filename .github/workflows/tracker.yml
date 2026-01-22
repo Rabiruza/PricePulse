@@ -45,12 +45,6 @@ jobs:
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        # Find the price history file and add it
-        $HISTORY_FILE=$(find . -name "price_history.json" | head -n 1)
-        if [ -n "$HISTORY_FILE" ]; then
-          git add "$HISTORY_FILE"
-          git commit -m "Update price history [skip ci]" || exit 0
-          git push
-        else
-          echo "Price history file not found, skipping commit."
-        fi
+        git add PricePulse.Core/price_history.json
+        git commit -m "Update price history [skip ci]" || echo "No changes to commit"
+        git push
