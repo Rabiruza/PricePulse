@@ -17,41 +17,39 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
-        # Disable automatic restore to prevent searching for non-existent .sln paths
         cache: false 
 
-    - name: Build and Install Playwright
+    - name: Build Core Project
       shell: pwsh
       run: |
-        # Remove solution files to avoid conflicts with outdated project paths
-        Get-ChildItem -Filter *.sln -Recurse | Remove-Item -Force
-        
-        # Find the project file dynamically
-        $proj = Get-ChildItem -Filter *.csproj -Recurse | Select-Object -First 1
+        # Find the Core project file (ignoring bin/obj and Tests)
+        $proj = Get-ChildItem -Filter PricePulse.Core.csproj -Recurse | Select-Object -First 1
         Write-Host "Found project: $($proj.FullName)"
         
-        # Restore and build targeting the project file directly
-        dotnet restore $($proj.FullName)
-        dotnet build $($proj.FullName) --no-restore
-        
-        # Find and run Playwright installation script
+        # Build specifically the Core project
+        dotnet build $($proj.FullName) -c Release
+
+    - name: Install Playwright
+      shell: pwsh
+      run: |
+        # Playwright script is generated after build in the output directory
         $pwScript = Get-ChildItem -Filter playwright.ps1 -Recurse | Select-Object -First 1
+        if (-not $pwScript) { throw "Playwright script not found! Build might have failed." }
+        Write-Host "Using script: $($pwScript.FullName)"
         pwsh $($pwScript.FullName) install --with-deps
 
     - name: Run Scraper
       shell: pwsh
       run: |
-        # Locate project and run without re-building
-        $proj = Get-ChildItem -Filter *.csproj -Recurse | Select-Object -First 1
-        dotnet run --project $($proj.FullName) --no-build
+        $proj = Get-ChildItem -Filter PricePulse.Core.csproj -Recurse | Select-Object -First 1
+        # Run without background metrics to avoid Prometheus connection errors
+        dotnet run --project $($proj.FullName) -c Release --no-build
 
     - name: Commit and Push changes
       run: |
-        # Setup git bot identity
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        
-        # Save changes in price_history.json back to the repository
-        git add price_history.json
-        git commit -m "Update price history" || exit 0
+        # Only commit if price_history.json was updated
+        git add PricePulse.Core/price_history.json || git add price_history.json
+        git commit -m "Update price history [skip ci]" || exit 0
         git push
