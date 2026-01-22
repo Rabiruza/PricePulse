@@ -1,0 +1,36 @@
+name: iPhone Price Tracker
+
+on:
+  schedule:
+    # Запуск кожні 6 годин (можна змінити)
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Дозволяє запускати вручну кнопкою
+
+jobs:
+  check-price:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Install Playwright Browsers
+      run: |
+        dotnet build PricePulse.Core/PricePulse.Core.csproj
+        pwsh PricePulse.Core/bin/Debug/net8.0/playwright.ps1 install --with-deps
+
+    - name: Run Scraper
+      run: dotnet run --project PricePulse.Core/PricePulse.Core.csproj
+
+    - name: Commit and Push changes
+      run: |
+        git config --global user.name "GitHub Action"
+        git config --global user.email "action@github.com"
+        git add price_history.json
+        git commit -m "Update price history [skip ci]" || exit 0
+        git push
