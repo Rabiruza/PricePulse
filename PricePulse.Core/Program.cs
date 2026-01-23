@@ -4,12 +4,12 @@ using System.Text;
 
 Console.WriteLine("🚀 Starting PricePulse: Apple Tracker Edition");
 
-var scraper = new PlaywrightScraper();
+var priceProvider = new IPriceProvider();
 string appleUrl = "https://www.apple.com/iphone-17/"; // URL for tracking
 string historyFile = "price_history.json";
 
 // 1. Get current price
-decimal currentPrice = await scraper.GetPriceAsync(appleUrl);
+decimal currentPrice = await priceProvider.GetPriceAsync(appleUrl);
 
 if (currentPrice > 0)
 {
