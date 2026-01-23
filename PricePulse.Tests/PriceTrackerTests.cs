@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using PricePulse.Core;
 using PricePulse.Core.Interfaces;
 using PricePulse.Core.Services;
@@ -12,7 +13,8 @@ public class PriceProviderTests
     public async Task GetPriceAsync_ShouldReturnSuccess_WhenUrlIsValid()
     {
         // Arrange 
-        var priceProvider = new WebPriceExtractor();
+        var mockLogger = new Mock<ILogger<WebPriceExtractor>>();
+        var priceProvider = new WebPriceExtractor(mockLogger.Object);
         var url = "https://www.microsoft.com";
 
         // Act 
@@ -32,6 +34,7 @@ public class PriceProviderTests
         var mockStorage = new Mock<IPriceStorage>();
         var mockNotifier = new Mock<INotificationService>();
         var mockMonitoring = new Mock<IMonitoringService>();
+        var mockLogger = new Mock<ILogger<PriceTracker>>();
 
         // Setup: Simulate that the current price on the website is lower than the stored price
         decimal currentPrice = 800m;
@@ -50,7 +53,8 @@ public class PriceProviderTests
             mockProvider.Object, 
             mockStorage.Object, 
             mockNotifier.Object, 
-            mockMonitoring.Object);
+            mockMonitoring.Object,
+            mockLogger.Object);
 
         // --- Act ---
         // Execute the tracking logic
@@ -70,5 +74,51 @@ public class PriceProviderTests
         mockStorage.Verify(s => s.SavePriceAsync(currentPrice), 
                           Times.Once, 
                           "The new price must be saved regardless of the change.");
+    }
+
+    [Fact]
+    public async Task RunAsync_ShouldThrowArgumentException_WhenUrlIsNullOrEmpty()
+    {
+        // Arrange
+        var mockProvider = new Mock<IPriceProvider>();
+        var mockStorage = new Mock<IPriceStorage>();
+        var mockNotifier = new Mock<INotificationService>();
+        var mockMonitoring = new Mock<IMonitoringService>();
+        var mockLogger = new Mock<ILogger<PriceTracker>>();
+
+        var tracker = new PriceTracker(
+            mockProvider.Object,
+            mockStorage.Object,
+            mockNotifier.Object,
+            mockMonitoring.Object,
+            mockLogger.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync(null!, "iPhone 17"));
+        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync("", "iPhone 17"));
+        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync("   ", "iPhone 17"));
+    }
+
+    [Fact]
+    public async Task RunAsync_ShouldThrowArgumentException_WhenModelNameIsNullOrEmpty()
+    {
+        // Arrange
+        var mockProvider = new Mock<IPriceProvider>();
+        var mockStorage = new Mock<IPriceStorage>();
+        var mockNotifier = new Mock<INotificationService>();
+        var mockMonitoring = new Mock<IMonitoringService>();
+        var mockLogger = new Mock<ILogger<PriceTracker>>();
+
+        var tracker = new PriceTracker(
+            mockProvider.Object,
+            mockStorage.Object,
+            mockNotifier.Object,
+            mockMonitoring.Object,
+            mockLogger.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync("https://example.com", null!));
+        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync("https://example.com", ""));
+        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync("https://example.com", "   "));
     }
 }
