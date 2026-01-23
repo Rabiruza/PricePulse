@@ -2,9 +2,9 @@ using Microsoft.Playwright;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace PricePulse.Core;
+namespace PricePulse.Core.Services;
 
-public class PlaywrightScraper : IScraperService
+public class WebPriceExtractor : IPriceProvider
 {
     public async Task<decimal> GetPriceAsync(string url)
     {
