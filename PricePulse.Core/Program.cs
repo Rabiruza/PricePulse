@@ -2,9 +2,8 @@
 using PricePulse.Core.Services;
 using PricePulse.Core.Interfaces;
 
-Console.WriteLine("🚀 Starting PricePulse: Full SOLID Edition");
+Console.WriteLine("🚀 Starting PricePulse: ");
 
-// Composition Root
 IPriceProvider provider = new WebPriceExtractor();
 IPriceStorage storage = new PriceStorage();
 INotificationService notifier = new TelegramNotificationService();

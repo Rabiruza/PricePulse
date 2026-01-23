@@ -7,7 +7,7 @@ public class PriceTracker
     private readonly IPriceProvider _priceProvider;
     private readonly IPriceStorage _priceStorage;
     private readonly INotificationService _notificationService;
-    private readonly IMonitoringService _monitoringService; // Нова залежність
+    private readonly IMonitoringService _monitoringService; 
 
     public PriceTracker(
         IPriceProvider priceProvider, 
@@ -26,7 +26,6 @@ public class PriceTracker
         decimal currentPrice = await _priceProvider.GetPriceAsync(url);
         if (currentPrice <= 0) return;
 
-        // Викликаємо моніторинг
         await _monitoringService.PushMetricAsync(modelName, currentPrice);
 
         decimal lastPrice = await _priceStorage.GetLastPriceAsync();
