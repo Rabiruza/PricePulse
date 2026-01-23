@@ -1,6 +1,8 @@
 using Microsoft.Playwright;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using PricePulse.Core.Interfaces;
+using PricePulse.Core.Services;
 
 namespace PricePulse.Core.Services;
 
