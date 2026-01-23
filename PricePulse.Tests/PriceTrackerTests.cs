@@ -10,6 +10,7 @@ namespace PricePulse.Tests;
 public class PriceProviderTests
 {
     [Fact]
+    [Trait("Category", "Integration")]
     public async Task GetPriceAsync_ShouldReturnSuccess_WhenUrlIsValid()
     {
         // Arrange 
@@ -18,11 +19,12 @@ public class PriceProviderTests
         var url = "https://www.microsoft.com";
 
         // Act 
-        // Поки що наш метод повертає 0, але ми перевіряємо, що він не падає з помилкою
+        // This is an integration test that requires Playwright browsers to be installed
+        // It verifies that WebPriceExtractor doesn't crash and returns a non-negative value
         var result = await priceProvider.GetPriceAsync(url);
 
         // Assert
-        Assert.True(result >= 0, "Price should be a positive number");
+        Assert.True(result >= 0, "Price should be a non-negative number (0 if price not found)");
     }
 
     [Fact]

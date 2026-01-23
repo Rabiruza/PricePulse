@@ -22,16 +22,10 @@ jobs:
         dotnet-version: '8.0.x'
         # Ensures the environment has the correct .NET SDK version
 
-    - name: Run Unit Tests
-      shell: pwsh
-      run: |
-        # Ensure business logic is correct before running the scraper
-        dotnet test --configuration Release
-        # If any test fails, the workflow stops here to prevent errors
-
     - name: Build and Install Playwright
       shell: pwsh
       run: |
+        # Build the project first to generate Playwright installation script
         # Find the Core project file dynamically within the repository
         $projFile = Get-ChildItem -Filter "PricePulse.Core.csproj" -Recurse | Select-Object -First 1
         if (-not $projFile) { throw "Could not find PricePulse.Core.csproj" }
@@ -45,6 +39,14 @@ jobs:
         
         Write-Host "Installing Playwright browsers and dependencies..."
         pwsh $($pwScript.FullName) install --with-deps
+
+    - name: Run Unit Tests
+      shell: pwsh
+      run: |
+        # Ensure business logic is correct before running the scraper
+        # Playwright browsers are now installed, so integration tests can run
+        dotnet test --configuration Release
+        # If any test fails, the workflow stops here to prevent errors
 
     - name: Run Scraper
       shell: pwsh
