@@ -57,7 +57,8 @@ jobs:
       run: |
         # Execute the application to fetch the price and notify if changed
         $projFile = Get-ChildItem -Filter "PricePulse.Core.csproj" -Recurse | Select-Object -First 1
-        dotnet run --project $($projFile.FullName) -c Release --no-build
+        # Build and run (removed --no-build to ensure appsettings.json is copied)
+        dotnet run --project $($projFile.FullName) -c Release
 
     - name: Commit and Push changes
       run: |

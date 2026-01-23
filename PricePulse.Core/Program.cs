@@ -9,9 +9,11 @@ using PricePulse.Core.Interfaces;
 using PricePulse.Core.Services;
 
 // Build configuration
+// Use AppContext.BaseDirectory to find the executable directory
+var basePath = AppContext.BaseDirectory;
 var configuration = new ConfigurationBuilder()
-    .SetBasePath(Directory.GetCurrentDirectory())
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .SetBasePath(basePath)
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true) // Make optional for CI/CD
     .AddEnvironmentVariables() // Environment variables override appsettings.json
     .Build();
 
