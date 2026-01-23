@@ -15,7 +15,12 @@ public class PriceProviderTests
     {
         // Arrange 
         var mockLogger = new Mock<ILogger<WebPriceExtractor>>();
-        var priceProvider = new WebPriceExtractor(mockLogger.Object);
+        var options = Microsoft.Extensions.Options.Options.Create(new PricePulse.Core.Configuration.WebScrapingOptions
+        {
+            SelectorTimeoutMs = 10000,
+            UserAgent = "Test User Agent"
+        });
+        var priceProvider = new WebPriceExtractor(options, mockLogger.Object);
         var url = "https://www.microsoft.com";
 
         // Act 

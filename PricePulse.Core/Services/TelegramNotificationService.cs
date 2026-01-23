@@ -1,18 +1,41 @@
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Polly;
+using Polly.Extensions.Http;
+using PricePulse.Core.Configuration;
 using PricePulse.Core.Interfaces;
 
 namespace PricePulse.Core.Services;
 
-public class TelegramNotificationService : INotificationService, IDisposable
+public class TelegramNotificationService : INotificationService
 {
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly TelegramOptions _options;
+    private readonly IAsyncPolicy<HttpResponseMessage> _retryPolicy;
     private readonly ILogger<TelegramNotificationService> _logger;
-    private readonly HttpClient _httpClient;
-    private bool _disposed = false;
 
-    public TelegramNotificationService(ILogger<TelegramNotificationService> logger)
+    public TelegramNotificationService(
+        IHttpClientFactory httpClientFactory,
+        IOptions<TelegramOptions> options,
+        IOptions<RetryPolicyOptions> retryOptions,
+        ILogger<TelegramNotificationService> logger)
     {
+        _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _httpClient = new HttpClient();
+        
+        var retryOpts = retryOptions?.Value ?? new RetryPolicyOptions();
+        _retryPolicy = HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .WaitAndRetryAsync(
+                retryCount: retryOpts.MaxRetries,
+                sleepDurationProvider: retryAttempt => 
+                    TimeSpan.FromSeconds(retryOpts.DelaySeconds * Math.Pow(retryOpts.BackoffMultiplier, retryAttempt - 1)),
+                onRetry: (outcome, timespan, retryCount, context) =>
+                {
+                    _logger.LogWarning("Retry {RetryCount} for Telegram notification after {Delay}ms", retryCount, timespan.TotalMilliseconds);
+                });
     }
 
     public async Task SendAsync(string message)
@@ -34,8 +57,13 @@ public class TelegramNotificationService : INotificationService, IDisposable
 
         try
         {
-            var url = $"https://api.telegram.org/bot{token}/sendMessage?chat_id={chatId}&text={Uri.EscapeDataString(message)}";
-            var response = await _httpClient.GetAsync(url);
+            var client = _httpClientFactory.CreateClient("Telegram");
+            client.Timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds);
+            
+            var url = $"{_options.BaseUrl}{token}/sendMessage?chat_id={chatId}&text={Uri.EscapeDataString(message)}";
+            
+            var response = await _retryPolicy.ExecuteAsync(async () =>
+                await client.GetAsync(url));
             
             if (response.IsSuccessStatusCode)
             {
@@ -52,15 +80,6 @@ public class TelegramNotificationService : INotificationService, IDisposable
         {
             _logger.LogError(ex, "Error sending Telegram notification");
             // Don't throw - notification failures shouldn't break price tracking
-        }
-    }
-
-    public void Dispose()
-    {
-        if (!_disposed)
-        {
-            _httpClient?.Dispose();
-            _disposed = true;
         }
     }
 }

@@ -1,42 +1,45 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using PricePulse.Core.Configuration;
 using PricePulse.Core.Interfaces;
 
 namespace PricePulse.Core.Services;
 
 public class PriceStorage : IPriceStorage
 {
-    private const string HistoryFile = "price_history.json";
+    private readonly string _historyFile;
     private readonly ILogger<PriceStorage> _logger;
 
-    public PriceStorage(ILogger<PriceStorage> logger)
+    public PriceStorage(IOptions<StorageOptions> options, ILogger<PriceStorage> logger)
     {
+        _historyFile = options?.Value?.HistoryFile ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<decimal> GetLastPriceAsync()
     {
-        if (!File.Exists(HistoryFile))
+        if (!File.Exists(_historyFile))
         {
-            _logger.LogDebug("Price history file not found: {HistoryFile}. Returning 0.", HistoryFile);
+            _logger.LogDebug("Price history file not found: {HistoryFile}. Returning 0.", _historyFile);
             return 0;
         }
 
         try
         {
-            var json = await File.ReadAllTextAsync(HistoryFile);
+            var json = await File.ReadAllTextAsync(_historyFile);
             var price = JsonSerializer.Deserialize<decimal>(json);
             _logger.LogDebug("Retrieved last price from storage: ${Price}", price);
             return price;
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Failed to deserialize price from {HistoryFile}. File may be corrupted.", HistoryFile);
+            _logger.LogError(ex, "Failed to deserialize price from {HistoryFile}. File may be corrupted.", _historyFile);
             return 0;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error reading price history from {HistoryFile}", HistoryFile);
+            _logger.LogError(ex, "Unexpected error reading price history from {HistoryFile}", _historyFile);
             return 0;
         }
     }
@@ -46,12 +49,12 @@ public class PriceStorage : IPriceStorage
         try
         {
             var json = JsonSerializer.Serialize(price);
-            await File.WriteAllTextAsync(HistoryFile, json);
-            _logger.LogDebug("Saved price ${Price} to {HistoryFile}", price, HistoryFile);
+            await File.WriteAllTextAsync(_historyFile, json);
+            _logger.LogDebug("Saved price ${Price} to {HistoryFile}", price, _historyFile);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save price ${Price} to {HistoryFile}", price, HistoryFile);
+            _logger.LogError(ex, "Failed to save price ${Price} to {HistoryFile}", price, _historyFile);
             throw; // Re-throw as this is a critical operation
         }
     }

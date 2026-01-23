@@ -1,18 +1,21 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.Playwright;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using PricePulse.Core.Configuration;
 using PricePulse.Core.Interfaces;
 
 namespace PricePulse.Core.Services;
 
 public class WebPriceExtractor : IPriceProvider
 {
-    private const int SelectorTimeoutMs = 10000;
+    private readonly WebScrapingOptions _options;
     private readonly ILogger<WebPriceExtractor> _logger;
 
-    public WebPriceExtractor(ILogger<WebPriceExtractor> logger)
+    public WebPriceExtractor(IOptions<WebScrapingOptions> options, ILogger<WebPriceExtractor> logger)
     {
+        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -40,7 +43,7 @@ public class WebPriceExtractor : IPriceProvider
         
         await page.SetExtraHTTPHeadersAsync(new Dictionary<string, string> 
         {
-            { "User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" }
+            { "User-Agent", _options.UserAgent }
         });
 
         try
@@ -56,8 +59,10 @@ public class WebPriceExtractor : IPriceProvider
 
         try 
         {
+            // Note: Selector should ideally come from configuration per product
+            // For now, keeping hardcoded but configurable timeout
             string selector = "span[data-pricing-product='iphone-17']";
-            await page.WaitForSelectorAsync(selector, new PageWaitForSelectorOptions { Timeout = SelectorTimeoutMs });
+            await page.WaitForSelectorAsync(selector, new PageWaitForSelectorOptions { Timeout = _options.SelectorTimeoutMs });
 
             var priceElement = await page.QuerySelectorAsync(selector);
             if (priceElement != null)
