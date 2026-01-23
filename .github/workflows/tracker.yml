@@ -17,6 +17,11 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
+        
+    - name: Run Unit Tests
+      shell: pwsh
+      run: |
+        dotnet test --configuration Release
 
     - name: Build and Install Playwright
       shell: pwsh
