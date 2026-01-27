@@ -1,14 +1,9 @@
 namespace PricePulse.Core.Interfaces;
 
-/// <summary>
-/// Provides an abstraction for storing and retrieving product prices.
-/// Decouples consumers from the storage implementation (e.g., database, memory, file).
-/// </summary>
+/// <summary> Stores and retrieves product prices. </summary>
 public interface IPriceStorage
 {
-    /// <summary>
-    /// Gets the most recently stored price.
-    /// </summary>
+    /// <summary> Gets the most recently stored price. </summary>
     Task<decimal> GetLastPriceAsync();
 
     /// <summary>

@@ -1,9 +1,6 @@
 namespace PricePulse.Core.Interfaces;
 
-/// <summary>
-/// Provides an abstraction for sending notifications to users or systems.
-/// Implementations can vary (e.g., email, SMS, push notifications) without affecting consumers.
-/// </summary>
+/// <summary> Sends notifications to users or systems. </summary>
 public interface INotificationService
 {
     /// <summary>

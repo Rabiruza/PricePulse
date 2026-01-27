@@ -37,7 +37,7 @@ public class WebPriceExtractor : IPriceProvider
 
         _logger.LogInformation("Starting price extraction from {Url}", url);
 
-        using var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
+        using var playwright = await Playwright.CreateAsync();
         await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
         var page = await browser.NewPageAsync();
         
