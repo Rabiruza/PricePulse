@@ -2,8 +2,8 @@ name: Price Tracker
 
 on:
   schedule:
-    # Run every 6 hours to check for price updates
-    - cron: '0 */6 * * *'
+    # Run daily at midnight to check for price updates
+    - cron: '0 0 * * *'
   workflow_dispatch:
     # Allow manual triggering of the workflow from the GitHub UI
 
