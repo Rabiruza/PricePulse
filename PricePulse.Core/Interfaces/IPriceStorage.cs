@@ -1,3 +1,5 @@
+using PricePulse.Core.Interfaces;
+
 namespace PricePulse.Core.Interfaces;
 
 /// <summary> Stores and retrieves product prices. </summary>

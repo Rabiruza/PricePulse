@@ -1,3 +1,5 @@
+using PricePulse.Core.Interfaces;
+
 namespace PricePulse.Core.Configuration;
 
 public class StorageOptions

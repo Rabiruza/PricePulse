@@ -1,4 +1,10 @@
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using PricePulse.Core.Interfaces;
+using PricePulse.Core.Configuration;
+using System.Text.Json.Serialization;
+using System.IO;
 
 namespace PricePulse.Core.Services;
 
