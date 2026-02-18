@@ -97,4 +97,26 @@ public class PriceParsingTests
             Assert.Equal(expectedPrice, parsed);
         }
     }
+
+    [Theory]
+    [InlineData("$", false)]
+    [InlineData("USD ", false)]
+    [InlineData("€ ", false)]
+    [InlineData("£ ", false)]
+    public void PriceRegex_ShouldNotParse_WhenNoNumericValuePresent(string priceText, bool shouldMatch)
+    {
+        // Act
+        var match = PriceRegex.Match(priceText);
+
+        // Assert
+        Assert.Equal(shouldMatch, match.Success);
+
+        if (match.Success)
+        {
+            // If it does match, the captured group should still be a valid number
+            var priceValue = match.Groups[1].Value;
+            Assert.False(string.IsNullOrWhiteSpace(priceValue));
+            Assert.True(decimal.TryParse(priceValue, NumberStyles.Number, CultureInfo.InvariantCulture, out _));
+        }
+    }
 }

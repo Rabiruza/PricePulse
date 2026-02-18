@@ -1,0 +1,10 @@
+# Rules
+- Role: C# Test Automation Engineer.
+- Code Style: Write clean, minimal, production-ready C# code. Follow SOLID.
+- Formatting: Return ONLY code blocks. No conversational filler or preamble.
+- Async: Use async/await correctly for all I/O and Playwright operations.
+- Types: Prefer explicit types (e.g., IPage, ILocator) over 'var' for clarity.
+- Web: Use Playwright .NET API. Prioritize GetByRole/TestId. Use Page Object Model.
+- Desktop: Use FlaUI/Appium. Prioritize AutomationID.
+- Framework: Use NUnit/xUnit attributes.
+- Context: Maintain project consistency based on PricePulse.sln.

@@ -7,7 +7,7 @@ using Xunit;
 
 namespace PricePulse.Tests;
 
-public class PriceProviderTests
+public class PriceTrackerTests
 {
     [Fact]
     [Trait("Category", "Integration")]
@@ -81,6 +81,47 @@ public class PriceProviderTests
         mockStorage.Verify(s => s.SavePriceAsync(currentPrice), 
                           Times.Once, 
                           "The new price must be saved regardless of the change.");
+    }
+
+    [Fact]
+    public async Task RunAsync_ShouldNotSendNotification_WhenPriceDoesNotDrop()
+    {
+        // --- Arrange ---
+        var mockProvider = new Mock<IPriceProvider>();
+        var mockStorage = new Mock<IPriceStorage>();
+        var mockNotifier = new Mock<INotificationService>();
+        var mockMonitoring = new Mock<IMonitoringService>();
+        var mockLogger = new Mock<ILogger<PriceTracker>>();
+
+        decimal currentPrice = 1200m;
+        decimal lastPrice = 1000m;
+
+        mockProvider.Setup(p => p.GetPriceAsync(It.IsAny<string>()))
+                    .ReturnsAsync(currentPrice);
+
+        mockStorage.Setup(s => s.GetLastPriceAsync())
+                   .ReturnsAsync(lastPrice);
+
+        var tracker = new PriceTracker(
+            mockProvider.Object,
+            mockStorage.Object,
+            mockNotifier.Object,
+            mockMonitoring.Object,
+            mockLogger.Object);
+
+        // --- Act ---
+        await tracker.RunAsync("http://example.com/iphone", "iPhone 17");
+
+        // --- Assert ---
+        mockNotifier.Verify(n => n.SendAsync(It.IsAny<string>()),
+                           Times.Never,
+                           "Notification should not be sent when the price does not decrease.");
+
+        mockMonitoring.Verify(m => m.PushMetricAsync("iPhone 17", currentPrice),
+                             Times.Once);
+
+        mockStorage.Verify(s => s.SavePriceAsync(currentPrice),
+                          Times.Once);
     }
 
     [Fact]
