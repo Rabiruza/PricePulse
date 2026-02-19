@@ -1,0 +1,19 @@
+# С# / .NET
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.user
+
+# Configuration and logs
+.vs/
+.vscode/
+.idea/
+*.log
+
+# Temporary files and test artifacts
+TestResults/
+playwright-report/
+blob-report/
+test-results/
