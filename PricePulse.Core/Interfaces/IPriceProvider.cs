@@ -1,3 +1,5 @@
+using PricePulse.Core.Configuration;
+
 namespace PricePulse.Core.Interfaces;
 
 /// <summary>
@@ -6,7 +8,7 @@ namespace PricePulse.Core.Interfaces;
 public interface IPriceProvider
 {
     /// <summary>
-    /// Asynchronously retrieves the product price for the specified URL.
+    /// Asynchronously retrieves the product price using the provided configuration.
     /// </summary>
-    Task<decimal> GetPriceAsync(string url);
+    Task<decimal> GetPriceAsync(ProductConfig product);
 }

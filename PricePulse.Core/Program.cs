@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PricePulse.Core;
@@ -24,6 +24,7 @@ services.Configure<PrometheusOptions>(configuration.GetSection(PrometheusOptions
 services.Configure<TelegramOptions>(configuration.GetSection(TelegramOptions.SectionName));
 services.Configure<WebScrapingOptions>(configuration.GetSection(WebScrapingOptions.SectionName));
 services.Configure<RetryPolicyOptions>(configuration.GetSection(RetryPolicyOptions.SectionName));
+services.Configure<TrackingOptions>(configuration.GetSection(TrackingOptions.SectionName));
 
 // Logging
 services.AddLogging(builder =>
@@ -63,32 +64,35 @@ logger.LogInformation("🚀 Starting PricePulse");
 
 try
 {
-    // Get product configuration (for now, using first product from config)
-    var productsSection = configuration.GetSection("Products");
-    var products = new List<ProductConfiguration>();
-    productsSection.Bind(products);
-    
-    // Fallback to default if no products configured
+    // Get tracking configuration (for now, using first product from config)
+    TrackingOptions trackingOptions =
+        configuration.GetSection(TrackingOptions.SectionName).Get<TrackingOptions>() ?? new TrackingOptions();
+
+    List<ProductConfig> products = trackingOptions.Products;
+
     if (products.Count == 0)
     {
-        products.Add(new ProductConfiguration 
-        { 
-            Name = "iPhone 17", 
-            Url = "https://www.apple.com/iphone-17/", 
-            Selector = "span[data-pricing-product='iphone-17']" 
-        });
-    }
-    
-    var product = products.FirstOrDefault();
-    if (product == null || string.IsNullOrWhiteSpace(product.Url))
-    {
-        logger.LogError("No product configuration found");
+        logger.LogError(
+            "No products configured. Add at least one entry under {Section}:{Key} in appsettings.json.",
+            TrackingOptions.SectionName,
+            nameof(TrackingOptions.Products));
         Environment.ExitCode = 1;
         return;
     }
 
-    var tracker = serviceProvider.GetRequiredService<PriceTracker>();
-    await tracker.RunAsync(product.Url, product.Name);
+    PriceTracker tracker = serviceProvider.GetRequiredService<PriceTracker>();
+
+    foreach (ProductConfig product in products)
+    {
+        if (string.IsNullOrWhiteSpace(product.Url))
+        {
+            logger.LogError("Product {ProductId} has no URL configured", product.Id);
+            Environment.ExitCode = 1;
+            continue;
+        }
+
+        await tracker.RunAsync(product);
+    }
     
     logger.LogInformation("✅ PricePulse completed successfully");
 }

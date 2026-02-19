@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using PricePulse.Core.Configuration;
 using PricePulse.Core.Interfaces;
 
 namespace PricePulse.Core;
@@ -25,26 +26,34 @@ public class PriceTracker
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task RunAsync(string url, string modelName)
+    public async Task RunAsync(ProductConfig product)
     {
-        // Input validation
-        if (string.IsNullOrWhiteSpace(url))
+        if (product is null)
         {
-            _logger.LogError("URL cannot be null or empty");
-            throw new ArgumentException("URL cannot be null or empty", nameof(url));
+            _logger.LogError("Product cannot be null");
+            throw new ArgumentNullException(nameof(product));
         }
 
-        if (string.IsNullOrWhiteSpace(modelName))
+        if (string.IsNullOrWhiteSpace(product.Url))
         {
-            _logger.LogError("Model name cannot be null or empty");
-            throw new ArgumentException("Model name cannot be null or empty", nameof(modelName));
+            _logger.LogError("Product {ProductId} has no URL configured", product.Id);
+            throw new ArgumentException("Product URL cannot be null or empty", nameof(product));
         }
+
+        if (string.IsNullOrWhiteSpace(product.DisplayName))
+        {
+            _logger.LogError("Product {ProductId} has no display name configured", product.Id);
+            throw new ArgumentException("Product display name cannot be null or empty", nameof(product));
+        }
+
+        string modelName = product.DisplayName;
+        string url = product.Url;
 
         _logger.LogInformation("Starting price check for {ModelName} at {Url}", modelName, url);
 
         try
         {
-            decimal currentPrice = await _priceProvider.GetPriceAsync(url);
+            decimal currentPrice = await _priceProvider.GetPriceAsync(product);
             
             if (currentPrice <= 0)
             {
@@ -72,11 +81,10 @@ public class PriceTracker
                 _logger.LogInformation("First run for {ModelName}, sending initial notification", modelName);
                 await _notificationService.SendAsync($"🤖 Started tracking {modelName}: ${currentPrice}");
             }
-            else if (currentPrice != lastPrice)
+            else if (currentPrice < lastPrice)
             {
-                string emoji = currentPrice < lastPrice ? "📉 SALE!" : "📈 Price update:";
-                string message = $"{emoji} {modelName}: ${currentPrice} (was ${lastPrice})";
-                _logger.LogInformation("Price changed for {ModelName}: ${OldPrice} -> ${NewPrice}", 
+                string message = $"📉 SALE! {modelName}: ${currentPrice} (was ${lastPrice})";
+                _logger.LogInformation("Price dropped for {ModelName}: ${OldPrice} -> ${NewPrice}",
                     modelName, lastPrice, currentPrice);
                 await _notificationService.SendAsync(message);
             }

@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Playwright;
 using PricePulse.Core;
+using PricePulse.Core.Configuration;
 using PricePulse.Core.Interfaces;
 using PricePulse.Core.Services;
 using Moq;
@@ -21,12 +23,27 @@ public class PriceTrackerTests
             UserAgent = "Test User Agent"
         });
         var priceProvider = new WebPriceExtractor(options, mockLogger.Object);
-        var url = "https://www.microsoft.com";
+        var product = new ProductConfig
+        {
+            Id = "microsoft",
+            DisplayName = "Microsoft",
+            Url = "https://www.microsoft.com",
+            CssSelector = "body",
+            ProviderType = PriceProviderType.Generic
+        };
 
         // Act 
         // This is an integration test that requires Playwright browsers to be installed
         // It verifies that WebPriceExtractor doesn't crash and returns a non-negative value
-        var result = await priceProvider.GetPriceAsync(url);
+        decimal result;
+        try
+        {
+            result = await priceProvider.GetPriceAsync(product);
+        }
+        catch (PlaywrightException ex) when (ex.Message.Contains("Executable doesn't exist", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
 
         // Assert
         Assert.True(result >= 0, "Price should be a non-negative number (0 if price not found)");
@@ -48,7 +65,7 @@ public class PriceTrackerTests
         decimal lastPrice = 1000m;
 
         // Mocking the provider to return our "current" price
-        mockProvider.Setup(p => p.GetPriceAsync(It.IsAny<string>()))
+        mockProvider.Setup(p => p.GetPriceAsync(It.IsAny<ProductConfig>()))
                     .ReturnsAsync(currentPrice);
 
         // Mocking the storage to return our "historical" price
@@ -65,7 +82,16 @@ public class PriceTrackerTests
 
         // --- Act ---
         // Execute the tracking logic
-        await tracker.RunAsync("http://example.com/iphone", "iPhone 17");
+        var product = new ProductConfig
+        {
+            Id = "iphone-17",
+            DisplayName = "iPhone 17",
+            Url = "http://example.com/iphone",
+            CssSelector = "span.price",
+            ProviderType = PriceProviderType.Generic
+        };
+
+        await tracker.RunAsync(product);
 
         // --- Assert ---
         // Verify that the notification was sent exactly once with the "SALE" message
@@ -96,7 +122,7 @@ public class PriceTrackerTests
         decimal currentPrice = 1200m;
         decimal lastPrice = 1000m;
 
-        mockProvider.Setup(p => p.GetPriceAsync(It.IsAny<string>()))
+        mockProvider.Setup(p => p.GetPriceAsync(It.IsAny<ProductConfig>()))
                     .ReturnsAsync(currentPrice);
 
         mockStorage.Setup(s => s.GetLastPriceAsync())
@@ -110,7 +136,16 @@ public class PriceTrackerTests
             mockLogger.Object);
 
         // --- Act ---
-        await tracker.RunAsync("http://example.com/iphone", "iPhone 17");
+        var product = new ProductConfig
+        {
+            Id = "iphone-17",
+            DisplayName = "iPhone 17",
+            Url = "http://example.com/iphone",
+            CssSelector = "span.price",
+            ProviderType = PriceProviderType.Generic
+        };
+
+        await tracker.RunAsync(product);
 
         // --- Assert ---
         mockNotifier.Verify(n => n.SendAsync(It.IsAny<string>()),
@@ -142,13 +177,23 @@ public class PriceTrackerTests
             mockLogger.Object);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync(null!, "iPhone 17"));
-        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync("", "iPhone 17"));
-        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync("   ", "iPhone 17"));
+        var missingUrl = new ProductConfig
+        {
+            Id = "iphone-17",
+            DisplayName = "iPhone 17",
+            Url = "",
+            CssSelector = "span.price",
+            ProviderType = PriceProviderType.Generic
+        };
+
+        var whitespaceUrl = missingUrl with { Url = "   " };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync(missingUrl));
+        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync(whitespaceUrl));
     }
 
     [Fact]
-    public async Task RunAsync_ShouldThrowArgumentException_WhenModelNameIsNullOrEmpty()
+    public async Task RunAsync_ShouldThrowArgumentException_WhenDisplayNameIsNullOrEmpty()
     {
         // Arrange
         var mockProvider = new Mock<IPriceProvider>();
@@ -165,8 +210,18 @@ public class PriceTrackerTests
             mockLogger.Object);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync("https://example.com", null!));
-        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync("https://example.com", ""));
-        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync("https://example.com", "   "));
+        var missingName = new ProductConfig
+        {
+            Id = "iphone-17",
+            DisplayName = "",
+            Url = "https://example.com",
+            CssSelector = "span.price",
+            ProviderType = PriceProviderType.Generic
+        };
+
+        var whitespaceName = missingName with { DisplayName = "   " };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync(missingName));
+        await Assert.ThrowsAsync<ArgumentException>(() => tracker.RunAsync(whitespaceName));
     }
 }

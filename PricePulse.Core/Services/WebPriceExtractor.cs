@@ -19,23 +19,38 @@ public class WebPriceExtractor : IPriceProvider
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<decimal> GetPriceAsync(string url)
+    public async Task<decimal> GetPriceAsync(ProductConfig product)
     {
-        if (string.IsNullOrWhiteSpace(url))
+        if (product is null)
         {
-            _logger.LogError("URL cannot be null or empty");
-            throw new ArgumentException("URL cannot be null or empty", nameof(url));
+            _logger.LogError("Product configuration cannot be null");
+            throw new ArgumentNullException(nameof(product));
+        }
+
+        if (string.IsNullOrWhiteSpace(product.Url))
+        {
+            _logger.LogError("Product {ProductId} URL cannot be null or empty", product.Id);
+            throw new ArgumentException("Product URL cannot be null or empty", nameof(product));
+        }
+
+        if (string.IsNullOrWhiteSpace(product.CssSelector))
+        {
+            _logger.LogError("Product {ProductId} CSS selector cannot be null or empty", product.Id);
+            throw new ArgumentException("Product CSS selector cannot be null or empty", nameof(product));
         }
 
         // Validate URL format for security
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || 
+        if (!Uri.TryCreate(product.Url, UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
-            _logger.LogError("Invalid URL format: {Url}. Only HTTP/HTTPS URLs are allowed.", url);
-            throw new ArgumentException("URL must be a valid HTTP or HTTPS URL", nameof(url));
+            _logger.LogError("Invalid URL format: {Url}. Only HTTP/HTTPS URLs are allowed.", product.Url);
+            throw new ArgumentException("URL must be a valid HTTP or HTTPS URL", nameof(product));
         }
 
-        _logger.LogInformation("Starting price extraction from {Url}", url);
+        _logger.LogInformation(
+            "Starting price extraction for {ProductId} from {Url}",
+            product.Id,
+            product.Url);
 
         using var playwright = await Playwright.CreateAsync();
         await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
@@ -48,20 +63,18 @@ public class WebPriceExtractor : IPriceProvider
 
         try
         {
-            await page.GotoAsync(url);
-            _logger.LogDebug("Successfully navigated to {Url}", url);
+            await page.GotoAsync(product.Url);
+            _logger.LogDebug("Successfully navigated to {Url}", product.Url);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to navigate to {Url}", url);
+            _logger.LogError(ex, "Failed to navigate to {Url}", product.Url);
             return 0m;
         }
 
         try 
         {
-            // Note: Selector should ideally come from configuration per product
-            // For now, keeping hardcoded but configurable timeout
-            string selector = "span[data-pricing-product='iphone-17']";
+            string selector = product.CssSelector;
             await page.WaitForSelectorAsync(selector, new PageWaitForSelectorOptions { Timeout = _options.SelectorTimeoutMs });
 
             var priceElement = await page.QuerySelectorAsync(selector);
@@ -80,7 +93,7 @@ public class WebPriceExtractor : IPriceProvider
                     var priceValue = priceMatch.Groups[1].Value;
                     if (decimal.TryParse(priceValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var price))
                     {
-                        _logger.LogInformation("Successfully extracted price: ${Price} from {Url}", price, url);
+                        _logger.LogInformation("Successfully extracted price: ${Price} from {Url}", price, product.Url);
                         return price;
                     }
                     else
@@ -101,15 +114,16 @@ public class WebPriceExtractor : IPriceProvider
         }
         catch (TimeoutException)
         {
-            _logger.LogWarning("Timeout waiting for price element. Selector: {Selector}. Apple might be changing the layout or blocking the request.", 
-                "span[data-pricing-product='iphone-17']");
+            _logger.LogWarning(
+                "Timeout waiting for price element. Selector: {Selector}. Site might be changing layout or blocking the request.",
+                product.CssSelector);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error extracting price from {Url}", url);
+            _logger.LogError(ex, "Error extracting price from {Url}", product.Url);
         }
 
-        _logger.LogWarning("Failed to extract price from {Url}, returning 0", url);
+        _logger.LogWarning("Failed to extract price from {Url}, returning 0", product.Url);
         return 0m;
     }
 }
