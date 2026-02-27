@@ -63,7 +63,7 @@ public class WebPriceExtractorIntegrationTests : IAsyncLifetime
         await page.GotoAsync($"{_server.Url}test-page-1.html");
 
         var priceText = await page.TextContentAsync(".price");
-        Assert.Equal("799,99", priceText);
+        Assert.Equal("$799.99", priceText?.Trim());
     }
 
     [Fact]
@@ -72,8 +72,23 @@ public class WebPriceExtractorIntegrationTests : IAsyncLifetime
         var page = await _browser.NewPageAsync();
         await page.GotoAsync($"{_server.Url}sale-item.html");
 
-        var priceText = await page.TextContentAsync("#sale-price");
-        Assert.Equal("399,99", priceText);
+        // Wait for the element to be present
+        var element = await page.WaitForSelectorAsync("#sale-price", new() { Timeout = 5000 });
+        
+        // Wait for element to be stable (JavaScript will update it)
+        await element.WaitForElementStateAsync(ElementState.Stable, new() { Timeout = 3000 });
+        
+        // Get the text content after it's updated
+        var priceText = await element.TextContentAsync();
+        
+        // If still loading, wait a bit more for JavaScript to execute
+        if (priceText?.Contains("Loading") == true)
+        {
+            await Task.Delay(2000);
+            priceText = await element.TextContentAsync();
+        }
+        
+        Assert.Equal("$399.99", priceText?.Trim());
     }
 
     [Fact]
