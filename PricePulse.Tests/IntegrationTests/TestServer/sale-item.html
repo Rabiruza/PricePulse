@@ -1,0 +1,19 @@
+<!-- PricePulse.Tests/IntegrationTests/TestServer/sale-item.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sale Item Page</title>
+    <script>
+        // Dynamically change price via JS after 1.5 seconds
+        setTimeout(() => {
+            document.getElementById('sale-price').textContent = '$399.99';
+        }, 1500);
+    </script>
+</head>
+<body>
+    <h1>Sale Item</h1>
+    <div class="product-info">
+        <span id="sale-price">Loading sale price...</span>
+    </div>
+</body>
+</html>

@@ -1,0 +1,15 @@
+<!-- PricePulse.Tests/Integration/TestServer/dynamic-price-page.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dynamic Price Page</title>
+    <script>
+        setTimeout(() => {
+            document.getElementById('dynamic-price').textContent = '$599.00';
+        }, 1000);
+    </script>
+</head>
+<body>
+    <div id="dynamic-price">Loading...</div>
+</body>
+</html>
